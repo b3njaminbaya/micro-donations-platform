@@ -48,11 +48,12 @@ def login():
     if not user or not user.check_password(password):
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
-    access_token = create_access_token(identity=user.id, expires_delta=timedelta(days=1))
+    access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(days=1))
 
     return jsonify({
-        "success": True, 
-        "message": "Login successful", 
+        "success": True,
+        "message": "Login successful",
+        "access_token": access_token,
         "user": user.to_dict()
     })
 

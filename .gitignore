@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 *.env
 *.egg-info/
@@ -16,7 +17,7 @@ pip-delete-this-directory.txt
 instance/
 *.sqlite3
 *.db
-instance/
+server/uploads/
 
 # Node specific
 node_modules/
@@ -24,16 +25,18 @@ npm-debug.log
 yarn-error.log
 yarn-debug.log
 .pnpm-debug.log
-package-lock.json
-yarn.lock
+# package-lock.json is intentionally tracked for reproducible installs.
 
 # React specific
 build/
 coverage/
+client/.env.local
+client/.env.*.local
 
 # Editor and OS specific
 .vscode/
 .idea/
+.claude/
 *.swp
 .DS_Store
 *.log

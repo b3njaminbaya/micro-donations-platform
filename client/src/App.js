@@ -1,18 +1,23 @@
 import { Routes, Route, useLocation } from "react-router-dom";
-import Home from "./pages/Home";
-import NotFound from "./pages/NotFound";
-import Causes from "./pages/Causes";
-import CreateCause from "./pages/CreateCause";
-import EditCause from "./pages/EditCause";
-import CauseDetail from "./pages/CauseDetail";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Home from "./pages/public/Home";
+import NotFound from "./pages/public/NotFound";
+import Causes from "./pages/public/Causes";
+import CauseDetail from "./pages/public/CauseDetail";
+import Login from "./pages/public/Login";
+import Register from "./pages/public/Register";
 import Navbar from "./components/NavBar";
 import Footer from "./components/Footer";
-import Dashboard from "./pages/Dashboard";
-import MyCauses from "./pages/MyCauses";
-import MyDonations from "./pages/MyDonations";
-import Profile from "./pages/Profile";
+import Dashboard from "./pages/dashboard/Dashboard";
+import CreateCause from "./pages/dashboard/CreateCause";
+import EditCause from "./pages/dashboard/EditCause";
+import MyCauses from "./pages/dashboard/MyCauses";
+import MyDonations from "./pages/dashboard/MyDonations";
+import Profile from "./pages/dashboard/Profile";
+import Rewards from "./pages/dashboard/Rewards";
+import AdminCauses from "./pages/admin/AdminCauses";
+import AdminUsers from "./pages/admin/AdminUsers";
 import AuthProvider from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserLayout from "./components/UserLayout";
@@ -27,6 +32,8 @@ function App() {
     "/my-causes",
     "/my-donations",
     "/profile",
+    "/rewards",
+    "/admin",
   ];
 
   const isUserLayoutRoute = userLayoutPaths.some(path =>
@@ -40,8 +47,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/causes" element={<Causes />} />
-        <Route path="/cause-details/:id" element={<CauseDetail />} />
-        <Route path="/causes/:id" element={<Causes />} />
+        <Route path="/causes/:id" element={<CauseDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -53,12 +59,19 @@ function App() {
           <Route path="/my-causes" element={<MyCauses />} />
           <Route path="/my-donations" element={<MyDonations />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/rewards" element={<Rewards />} />
+        </Route>
+
+        <Route element={<ProtectedRoute adminOnly><UserLayout /></ProtectedRoute>}>
+          <Route path="/admin/causes" element={<AdminCauses />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
       </Routes>
 
       {!isUserLayoutRoute && <Footer />}
+      <ToastContainer position="top-right" autoClose={4000} />
     </AuthProvider>
   );
 };

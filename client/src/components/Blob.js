@@ -1,17 +1,20 @@
-const Blob = ({ position = "top-left", color = "#eeeeee50" }) => {
+const Blob = ({ position = "top-left", color = "#CFEBE0", size = 340, blur = true }) => {
     const positions = {
-        "top-left": { top: 0, left: 0 },
-        "top-right": { top: 0, right: 0 },
-        "bottom-left": { bottom: 0, left: 0 },
-        "bottom-right": { bottom: 0, right: 0 },
+        "top-left": { top: "-8%", left: "-8%" },
+        "top-right": { top: "-8%", right: "-8%" },
+        "bottom-left": { bottom: "-8%", left: "-8%" },
+        "bottom-right": { bottom: "-8%", right: "-8%" },
     };
     return (
         <svg
             style={{
                 position: "absolute",
                 zIndex: 0,
-                width: "300px",
-                height: "300px",
+                width: size,
+                height: size,
+                filter: blur ? "blur(6px)" : undefined,
+                opacity: 0.7,
+                pointerEvents: "none",
                 ...positions[position],
             }}
             viewBox="0 0 200 200"

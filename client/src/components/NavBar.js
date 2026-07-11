@@ -1,70 +1,87 @@
-import React, { useState, useContext } from "react";
+import { useState, useContext } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, LogOut, Home, User, ClipboardList } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
+import Button from "./ui/Button";
 import logo from "../assets/micro-logo.jpg";
+
+const PUBLIC_LINKS = [
+    { to: "/", text: "Home" },
+    { to: "/causes", text: "Causes" },
+];
 
 const NavBar = () => {
     const { user, logout } = useContext(AuthContext);
     const [menuOpen, setMenuOpen] = useState(false);
     const location = useLocation();
 
-    const toggleDrawer = () => setMenuOpen(!menuOpen);
+    const toggleDrawer = () => setMenuOpen((v) => !v);
     const closeDrawer = () => setMenuOpen(false);
 
     return (
         <>
-            <nav className="bg-gray-900 shadow-md h-[80px] md:h-[96px] w-full z-50">
-                <div className="max-w-7xl mx-auto px-8 h-[80px] md:h-[96px] flex justify-between items-center">
-                    <Link to="/" className="flex items-center gap-2">
+            <nav className="fixed top-0 left-0 w-full z-50 bg-paper/90 backdrop-blur border-b border-line">
+                <div className="max-w-7xl mx-auto px-6 h-[76px] flex justify-between items-center">
+                    <Link to="/" className="flex items-center gap-2.5 shrink-0">
                         <img
                             src={logo}
-                            alt="Logo"
-                            className="h-8 w-8 sm:h-10 sm:w-10 object-contain rounded-full transition-transform duration-300 hover:scale-105"
+                            alt="Micro-Donations Platform"
+                            className="h-9 w-9 object-contain rounded-full ring-1 ring-line"
                         />
-                        <span className="text-lg sm:text-xl font-bold text-green-500 hover:text-green-400 transition">
-                            Micro-Donations Platform
+                        <span className="text-lg font-display font-semibold text-ink-900">
+                            Micro-Donations
                         </span>
                     </Link>
 
-                    <div className="hidden md:flex items-center gap-6">
+                    <div className="hidden md:flex items-center gap-8">
+                        {PUBLIC_LINKS.map((link) => (
+                            <NavLink key={link.to} {...link} currentPath={location.pathname} />
+                        ))}
+                    </div>
+
+                    <div className="hidden md:flex items-center gap-3">
                         {user ? (
                             <>
-                                <NavLink to="/dashboard" icon={<User size={18} />} text="Dashboard" currentPath={location.pathname} />
+                                <Button to="/dashboard" variant="secondary" className="!py-2">
+                                    <LayoutDashboard size={16} /> Dashboard
+                                </Button>
                                 <button
                                     onClick={logout}
-                                    className="flex items-center gap-1 text-red-400 hover:text-red-500 font-medium transition"
+                                    className="flex items-center gap-1.5 text-sm font-semibold text-ink-500 hover:text-danger-500 transition"
                                 >
-                                    <LogOut size={18} /> Logout
+                                    <LogOut size={16} /> Logout
                                 </button>
                             </>
                         ) : (
                             <>
-                                <NavLink to="/" icon={<Home size={18} />} text="Home" currentPath={location.pathname} />
-                                <NavLink to="/causes" icon={<ClipboardList size={18} />} text="Causes" currentPath={location.pathname} />
-                                <NavLink to="/register" icon={<User size={18} />} text="Register" currentPath={location.pathname} />
+                                <Link to="/login" className="text-sm font-semibold text-ink-700 hover:text-brand-600 transition">
+                                    Log in
+                                </Link>
+                                <Button to="/register" variant="primary" className="!py-2">
+                                    Get started
+                                </Button>
                             </>
                         )}
                     </div>
 
-                    <button onClick={toggleDrawer} className="md:hidden text-green-500">
-                        {menuOpen ? <X size={28} /> : <Menu size={28} />}
+                    <button onClick={toggleDrawer} className="md:hidden text-ink-900" aria-label="Toggle menu">
+                        {menuOpen ? <X size={26} /> : <Menu size={26} />}
                     </button>
                 </div>
 
                 {menuOpen && (
-                    <div className="md:hidden bg-gray-900 px-4 py-4 shadow-lg absolute top-[80px] left-0 w-full z-50 ">
+                    <div className="md:hidden bg-paper border-t border-line px-6 py-5">
                         <ul className="space-y-4">
+                            {PUBLIC_LINKS.map((link) => (
+                                <MobileLink key={link.to} {...link} close={closeDrawer} currentPath={location.pathname} />
+                            ))}
                             {user ? (
                                 <>
-                                    <MobileLink to="/dashboard" icon={<User size={18} />} text="Dashboard" close={closeDrawer} currentPath={location.pathname} />
+                                    <MobileLink to="/dashboard" text="Dashboard" close={closeDrawer} currentPath={location.pathname} />
                                     <li>
                                         <button
-                                            onClick={() => {
-                                                logout();
-                                                closeDrawer();
-                                            }}
-                                            className="flex items-center gap-2 text-red-400 hover:text-red-500 transition"
+                                            onClick={() => { logout(); closeDrawer(); }}
+                                            className="flex items-center gap-2 text-danger-500 font-semibold"
                                         >
                                             <LogOut size={18} /> Logout
                                         </button>
@@ -72,9 +89,8 @@ const NavBar = () => {
                                 </>
                             ) : (
                                 <>
-                                    <MobileLink to="/" icon={<Home size={18} />} text="Home" close={closeDrawer} currentPath={location.pathname} />
-                                    <MobileLink to="/causes" icon={<ClipboardList size={18} />} text="Causes" close={closeDrawer} currentPath={location.pathname} />
-                                    <MobileLink to="/register" icon={<User size={18} />} text="Register" close={closeDrawer} currentPath={location.pathname} />
+                                    <MobileLink to="/login" text="Log in" close={closeDrawer} currentPath={location.pathname} />
+                                    <MobileLink to="/register" text="Get started" close={closeDrawer} currentPath={location.pathname} />
                                 </>
                             )}
                         </ul>
@@ -82,40 +98,37 @@ const NavBar = () => {
                 )}
             </nav>
 
-            <div className="h-[72px] md:h-[80px]" />
+            <div className="h-[76px]" />
         </>
     );
 };
 
-const NavLink = ({ to, icon, text, currentPath }) => {
+const NavLink = ({ to, text, currentPath }) => {
     const isActive = currentPath === to;
     return (
         <Link
             to={to}
-            className={`flex items-center gap-1 font-medium transition ${isActive ? "text-green-400" : "text-gray-300 hover:text-green-500"
+            className={`text-sm font-semibold transition ${isActive ? "text-brand-600" : "text-ink-700 hover:text-brand-600"
                 }`}
         >
-            {icon} {text}
+            {text}
         </Link>
     );
 };
 
-const MobileLink = ({ to, icon, text, close, currentPath }) => {
+const MobileLink = ({ to, text, close, currentPath }) => {
     const isActive = currentPath === to;
     return (
         <li>
             <Link
                 to={to}
                 onClick={close}
-                className={`flex items-center gap-2 ${isActive ? "text-green-400 font-semibold" : "text-gray-300 hover:text-green-400 transition "
-                    }`}
+                className={`block text-base font-semibold ${isActive ? "text-brand-600" : "text-ink-700"}`}
             >
-                {icon} {text}
+                {text}
             </Link>
         </li>
     );
 };
 
 export default NavBar;
-
-

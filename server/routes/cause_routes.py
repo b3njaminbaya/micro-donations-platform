@@ -1,76 +1,191 @@
 import os
-from flask import request, jsonify, send_from_directory
+from datetime import datetime
+from flask import Blueprint, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from flask_restful import Resource, reqparse
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from server.models import db, Cause
+from server.utils import current_user
 
-UPLOAD_FOLDER = "uploads"
+cause_bp = Blueprint('cause_bp', __name__)
+MAX_PER_PAGE = 50
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
 
 def allowed_file(filename):
-    """Check if the uploaded file has an allowed extension."""
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-cause_parser = reqparse.RequestParser()
-cause_parser.add_argument('title', type=str, required=True, help='Title is required')
-cause_parser.add_argument('description', type=str, required=True, help='Description is required')
-cause_parser.add_argument('funding_goal', type=float, required=False, default=0)
 
-class CauseResource(Resource):
-    def get(self, cause_id=None):
-        if cause_id:
-            cause = Cause.query.get(cause_id)
-            if not cause:
-                return {'error': 'Cause not found'}, 404
-            return jsonify(cause.to_dict())
+def _parse_goal_amount(raw):
+    try:
+        amount = float(raw)
+    except (TypeError, ValueError):
+        return None, ('goal_amount must be a number', 400)
+    if amount <= 0:
+        return None, ('goal_amount must be greater than 0', 400)
+    return amount, None
 
-        causes = Cause.query.all()
-        return jsonify([cause.to_dict() for cause in causes]), 200
-    
-    def post(self):
-        args = cause_parser.parse_args()
-        if args['funding_goal'] <= 0:
-            return {'error': 'Funding goal must be greater than 0'}, 400
-        
-        new_cause = Cause(
-            title=args['title'],
-            description=args['description'],
-            funding_goal=args['funding_goal']
-        )
-        db.session.add(new_cause)
-        db.session.commit()
-        return new_cause.to_dict(), 201
-    
-    def patch(self, cause_id):
-        cause = Cause.query.get(cause_id)
-        if not cause:
-            return {'error': 'Cause not found'}, 404
-        
-        data = request.get_json()
-        cause.title = data.get('title', cause.title)
-        cause.description = data.get('description', cause.description)
-        
-        db.session.commit()
-        return cause.to_dict(), 200
-    
-    def delete(self, cause_id):
-        cause = Cause.query.get(cause_id)
-        if not cause:
-            return {'error': 'Cause not found'}, 404
-        
-        db.session.delete(cause)
-        db.session.commit()
-        return {'message': 'Cause deleted successfully'}, 200
-    
-class FeaturedCausesResource(Resource):
-    def get(self):
-        categories = db.session.query(Cause.category).distinct().all()
-        featured_causes = [Cause.query.filter_by(category=category[0]).first() for category in categories if category]
-        return jsonify([cause.to_dict() for cause in featured_causes])
 
-class UploadFileResource(Resource):
-    def get(self, filename):
-        return send_from_directory(UPLOAD_FOLDER, filename)
+@cause_bp.route('/causes', methods=['GET'])
+def list_causes():
+    query = Cause.query
+
+    category = request.args.get('category')
+    if category and category != 'All':
+        query = query.filter(Cause.category == category)
+
+    country = request.args.get('country')
+    if country and country != 'All':
+        query = query.filter(Cause.country == country)
+
+    search = request.args.get('search')
+    if search:
+        like = f"%{search}%"
+        query = query.filter(db.or_(Cause.title.ilike(like), Cause.description.ilike(like)))
+
+    try:
+        page = max(int(request.args.get('page', 1)), 1)
+        per_page = min(max(int(request.args.get('per_page', 12)), 1), MAX_PER_PAGE)
+    except ValueError:
+        return jsonify({'error': 'page and per_page must be integers'}), 400
+
+    query = query.order_by(Cause.created_at.desc())
+    total = query.count()
+    causes = query.offset((page - 1) * per_page).limit(per_page).all()
+
+    return jsonify({
+        'causes': [c.to_dict() for c in causes],
+        'page': page,
+        'per_page': per_page,
+        'total': total,
+        'pages': (total + per_page - 1) // per_page if total else 0,
+    }), 200
+
+
+@cause_bp.route('/causes/countries', methods=['GET'])
+def list_countries():
+    rows = db.session.query(Cause.country).distinct().order_by(Cause.country).all()
+    return jsonify([r[0] for r in rows if r[0]]), 200
+
+
+@cause_bp.route('/causes/featured', methods=['GET'])
+def featured_causes():
+    categories = db.session.query(Cause.category).distinct().all()
+    featured = [
+        Cause.query.filter_by(category=c[0]).order_by(Cause.created_at.desc()).first()
+        for c in categories if c[0]
+    ]
+    return jsonify([c.to_dict() for c in featured if c]), 200
+
+
+@cause_bp.route('/causes/mine', methods=['GET'])
+@jwt_required()
+def my_causes():
+    user_id = int(get_jwt_identity())
+    causes = Cause.query.filter_by(user_id=user_id).order_by(Cause.created_at.desc()).all()
+    return jsonify([c.to_dict() for c in causes]), 200
+
+
+@cause_bp.route('/causes/<int:cause_id>', methods=['GET'])
+def get_cause(cause_id):
+    cause = Cause.query.get(cause_id)
+    if not cause:
+        return jsonify({'error': 'Cause not found'}), 404
+    return jsonify(cause.to_dict(include_user=True)), 200
+
+
+@cause_bp.route('/causes', methods=['POST'])
+@jwt_required()
+def create_cause():
+    data = request.get_json() or {}
+    title = data.get('title')
+    description = data.get('description')
+    category = data.get('category')
+    country = data.get('country')
+
+    if not all([title, description, category, country]) or data.get('goal_amount') is None:
+        return jsonify({'error': 'title, description, goal_amount, category and country are required'}), 400
+
+    goal_amount, err = _parse_goal_amount(data.get('goal_amount'))
+    if err:
+        return jsonify({'error': err[0]}), err[1]
+
+    cause = Cause(
+        title=title,
+        description=description,
+        goal_amount=goal_amount,
+        category=category,
+        country=country,
+        image_url=data.get('image_url'),
+        user_id=int(get_jwt_identity()),
+    )
+    db.session.add(cause)
+    db.session.commit()
+    return jsonify(cause.to_dict()), 201
+
+
+@cause_bp.route('/causes/<int:cause_id>', methods=['PATCH'])
+@jwt_required()
+def update_cause(cause_id):
+    cause = Cause.query.get(cause_id)
+    if not cause:
+        return jsonify({'error': 'Cause not found'}), 404
+    user = current_user()
+    if cause.user_id != user.id and not user.is_admin:
+        return jsonify({'error': 'You do not have permission to edit this cause'}), 403
+
+    data = request.get_json() or {}
+    if 'goal_amount' in data:
+        goal_amount, err = _parse_goal_amount(data['goal_amount'])
+        if err:
+            return jsonify({'error': err[0]}), err[1]
+        cause.goal_amount = goal_amount
+
+    cause.title = data.get('title', cause.title)
+    cause.description = data.get('description', cause.description)
+    cause.category = data.get('category', cause.category)
+    cause.country = data.get('country', cause.country)
+    cause.image_url = data.get('image_url', cause.image_url)
+
+    db.session.commit()
+    return jsonify(cause.to_dict()), 200
+
+
+@cause_bp.route('/causes/<int:cause_id>', methods=['DELETE'])
+@jwt_required()
+def delete_cause(cause_id):
+    cause = Cause.query.get(cause_id)
+    if not cause:
+        return jsonify({'error': 'Cause not found'}), 404
+    user = current_user()
+    if cause.user_id != user.id and not user.is_admin:
+        return jsonify({'error': 'You do not have permission to delete this cause'}), 403
+
+    db.session.delete(cause)
+    db.session.commit()
+    return jsonify({'message': 'Cause deleted successfully'}), 200
+
+
+@cause_bp.route('/upload', methods=['POST'])
+@jwt_required()
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    if file.filename == '' or not allowed_file(file.filename):
+        return jsonify({'error': 'Invalid or missing file. Allowed types: png, jpg, jpeg, gif'}), 400
+
+    timestamp = int(datetime.utcnow().timestamp())
+    filename = secure_filename(f"{get_jwt_identity()}_{timestamp}_{file.filename}")
+    file.save(os.path.join(UPLOAD_FOLDER, filename))
+
+    image_url = f"{request.host_url.rstrip('/')}/api/uploads/{filename}"
+    return jsonify({'image_url': image_url}), 201
+
+
+@cause_bp.route('/uploads/<path:filename>', methods=['GET'])
+def get_upload(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
