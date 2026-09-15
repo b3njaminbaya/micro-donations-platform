@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from server.config import Config
-from server.models import db, Donation, Cause
+from server.models import db, Donation, Cause, Payout
 from server.services.mpesa_service import MpesaService
 
 mpesa_bp = Blueprint('mpesa_bp', __name__)
@@ -69,6 +71,33 @@ def mpesa_callback():
     donation = Donation.query.filter_by(checkout_request_id=checkout_request_id).first()
     if donation and donation.status == 'pending':
         donation.status = 'completed' if result_code == 0 else 'failed'
+        db.session.commit()
+
+    return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"}), 200
+
+
+@mpesa_bp.route('/mpesa/b2c/callback', methods=['POST'])
+def mpesa_b2c_callback():
+    """
+    Safaricom's B2C result callback, resolving a payout started by
+    /causes/<id>/payouts. Same shared-secret verification as the STK
+    callback above, via a separate secret (MPESA_B2C_CALLBACK_SECRET) since
+    this URL is registered independently with Daraja.
+    """
+    if Config.B2C_CALLBACK_SECRET and request.args.get('token') != Config.B2C_CALLBACK_SECRET:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json(silent=True) or {}
+    result = data.get("Result", {})
+    conversation_id = result.get("ConversationID")
+    result_code = result.get("ResultCode")
+
+    payout = Payout.query.filter_by(conversation_id=conversation_id).first()
+    if payout and payout.status == 'pending':
+        payout.status = 'completed' if result_code == 0 else 'failed'
+        if result_code != 0:
+            payout.failure_reason = result.get("ResultDesc")
+        payout.processed_at = datetime.utcnow()
         db.session.commit()
 
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"}), 200

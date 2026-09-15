@@ -78,9 +78,20 @@ class Cause(db.Model):
     comments = db.relationship("Comment", backref="cause", lazy=True)
     recurring_donations = db.relationship("RecurringDonation", backref="cause", lazy=True)
 
+    payouts = db.relationship("Payout", backref="cause", lazy=True)
+
     @property
     def raised_amount(self):
         return sum(d.amount for d in self.donations if d.status == 'completed')
+
+    @property
+    def paid_out_amount(self):
+        """Funds already sent or in flight to the creator — reserved so they can't be withdrawn twice."""
+        return sum(p.amount for p in self.payouts if p.status in ('pending', 'processing', 'completed'))
+
+    @property
+    def available_balance(self):
+        return self.raised_amount - self.paid_out_amount
 
     def to_dict(self, include_user=False):
         data = {
@@ -90,6 +101,7 @@ class Cause(db.Model):
             "image_url": self.image_url,
             "goal_amount": self.goal_amount,
             "raised_amount": self.raised_amount,
+            "available_balance": self.available_balance,
             "category": self.category,
             "country": self.country,
             "created_at": self.created_at.isoformat(),
@@ -131,6 +143,45 @@ class Donation(db.Model):
         if include_cause:
             data["cause"] = self.cause.to_summary_dict() if self.cause else None
         return data
+
+
+class Payout(db.Model):
+    __tablename__ = "payouts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Float, nullable=False)
+    phone_number = db.Column(db.String(20), nullable=False)
+    # pending: B2C request sent, awaiting Safaricom's result callback.
+    # completed: callback reported success. failed: callback reported failure,
+    # or the B2C request itself could not be started.
+    status = db.Column(db.String(20), nullable=False, default='pending')
+    conversation_id = db.Column(db.String(80), unique=True, nullable=True)
+    failure_reason = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime, nullable=True)
+
+    cause_id = db.Column(db.Integer, db.ForeignKey("causes.id"), nullable=False)
+    requested_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    requested_by = db.relationship("User", foreign_keys=[requested_by_id])
+
+    def to_dict(self, include_cause=False):
+        data = {
+            "id": self.id,
+            "amount": self.amount,
+            "phone_number": self.phone_number,
+            "status": self.status,
+            "failure_reason": self.failure_reason,
+            "created_at": self.created_at.isoformat(),
+            "processed_at": self.processed_at.isoformat() if self.processed_at else None,
+            "cause_id": self.cause_id,
+            "requested_by_id": self.requested_by_id,
+            "requested_by_name": self.requested_by.name if self.requested_by else None,
+        }
+        if include_cause:
+            data["cause"] = self.cause.to_summary_dict() if self.cause else None
+        return data
+
 
 class Comment(db.Model):
     __tablename__ = "comments"

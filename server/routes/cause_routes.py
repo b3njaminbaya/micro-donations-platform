@@ -13,9 +13,26 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'upload
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Magic-byte signatures for each allowed extension, so a renamed non-image
+# file (e.g. a .html file saved as photo.jpg) is rejected instead of being
+# stored and served back under /api/uploads.
+IMAGE_SIGNATURES = {
+    "png": [b"\x89PNG\r\n\x1a\n"],
+    "jpg": [b"\xff\xd8\xff"],
+    "jpeg": [b"\xff\xd8\xff"],
+    "gif": [b"GIF87a", b"GIF89a"],
+}
+SIGNATURE_READ_LENGTH = max(len(sig) for sigs in IMAGE_SIGNATURES.values() for sig in sigs)
+
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def has_valid_image_signature(file_storage, extension):
+    header = file_storage.stream.read(SIGNATURE_READ_LENGTH)
+    file_storage.stream.seek(0)
+    return any(header.startswith(sig) for sig in IMAGE_SIGNATURES.get(extension, []))
 
 
 def _parse_goal_amount(raw):
@@ -178,6 +195,10 @@ def upload_file():
     if file.filename == '' or not allowed_file(file.filename):
         return jsonify({'error': 'Invalid or missing file. Allowed types: png, jpg, jpeg, gif'}), 400
 
+    extension = file.filename.rsplit(".", 1)[1].lower()
+    if not has_valid_image_signature(file, extension):
+        return jsonify({'error': 'File content does not match a valid image of the given type'}), 400
+
     timestamp = int(datetime.utcnow().timestamp())
     filename = secure_filename(f"{get_jwt_identity()}_{timestamp}_{file.filename}")
     file.save(os.path.join(UPLOAD_FOLDER, filename))
@@ -188,4 +209,9 @@ def upload_file():
 
 @cause_bp.route('/uploads/<path:filename>', methods=['GET'])
 def get_upload(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    response = send_from_directory(UPLOAD_FOLDER, filename)
+    # Uploaded files are only ever validated as images, not otherwise
+    # sanitized — this stops a browser from sniffing one as HTML/JS and
+    # executing it if the signature check above were ever bypassed.
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response

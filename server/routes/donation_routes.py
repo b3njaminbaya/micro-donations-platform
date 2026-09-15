@@ -1,7 +1,7 @@
 import io
 from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from server.models import db, Donation, Cause
+from server.models import db, Donation, Cause, User
 from server.utils import current_user
 from server.services.receipt_service import build_receipt_pdf
 
@@ -30,9 +30,23 @@ def donations_by_cause(cause_id):
 @donation_bp.route('/donations', methods=['POST'])
 @jwt_required()
 def create_donation():
+    """
+    Records a donation as already 'completed' with no payment step — for an
+    admin to log a donation that happened outside M-Pesa (cash, bank
+    transfer, etc). Real in-app donations always go through
+    /mpesa/stk-push, which only ever creates 'pending' donations that a
+    callback resolves. Admin-only: without that restriction any
+    authenticated user could mint themselves reward points and inflate a
+    cause's progress for free.
+    """
+    user = current_user()
+    if not user.is_admin:
+        return jsonify({'error': 'Only admins can record a donation directly'}), 403
+
     data = request.get_json() or {}
     cause_id = data.get('cause_id')
     amount = data.get('amount')
+    donor_id = data.get('user_id', user.id)
 
     if cause_id is None or amount is None:
         return jsonify({'error': 'cause_id and amount are required'}), 400
@@ -40,6 +54,10 @@ def create_donation():
     cause = Cause.query.get(cause_id)
     if not cause:
         return jsonify({'error': 'Cause not found'}), 404
+
+    donor = User.query.get(donor_id)
+    if not donor:
+        return jsonify({'error': 'user_id does not match an existing user'}), 400
 
     try:
         amount = float(amount)
@@ -51,7 +69,7 @@ def create_donation():
     donation = Donation(
         amount=amount,
         cause_id=cause_id,
-        user_id=int(get_jwt_identity()),
+        user_id=donor.id,
         status='completed',
     )
     db.session.add(donation)

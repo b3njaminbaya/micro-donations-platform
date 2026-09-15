@@ -30,13 +30,13 @@ def test_receipt_requires_completed_donation(client, auth_headers, make_user, ap
     assert resp.status_code == 400
 
 
-def test_receipt_downloads_as_pdf_for_owner(client, auth_headers, make_user):
+def test_receipt_downloads_as_pdf_for_owner(client, auth_headers, admin_headers, make_user):
     headers, _ = auth_headers
     cause = create_cause(client, headers)
-    donor_headers, _ = make_user(email="donor@example.com")
+    donor_headers, donor = make_user(email="donor@example.com")
 
     donation = client.post(
-        "/api/donations", json={"cause_id": cause["id"], "amount": 30}, headers=donor_headers
+        "/api/donations", json={"cause_id": cause["id"], "amount": 30, "user_id": donor["id"]}, headers=admin_headers
     ).get_json()["donation"]
 
     resp = client.get(f"/api/donations/{donation['id']}/receipt", headers=donor_headers)
@@ -45,14 +45,14 @@ def test_receipt_downloads_as_pdf_for_owner(client, auth_headers, make_user):
     assert resp.data.startswith(b"%PDF")
 
 
-def test_receipt_denied_for_non_owner(client, auth_headers, make_user):
+def test_receipt_denied_for_non_owner(client, auth_headers, admin_headers, make_user):
     headers, _ = auth_headers
     cause = create_cause(client, headers)
-    donor_headers, _ = make_user(email="donor@example.com")
+    donor_headers, donor = make_user(email="donor@example.com")
     other_headers, _ = make_user(name="Third", email="third@example.com")
 
     donation = client.post(
-        "/api/donations", json={"cause_id": cause["id"], "amount": 30}, headers=donor_headers
+        "/api/donations", json={"cause_id": cause["id"], "amount": 30, "user_id": donor["id"]}, headers=admin_headers
     ).get_json()["donation"]
 
     resp = client.get(f"/api/donations/{donation['id']}/receipt", headers=other_headers)

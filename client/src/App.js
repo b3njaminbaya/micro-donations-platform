@@ -18,6 +18,7 @@ import Profile from "./pages/dashboard/Profile";
 import Rewards from "./pages/dashboard/Rewards";
 import AdminCauses from "./pages/admin/AdminCauses";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminPayouts from "./pages/admin/AdminPayouts";
 import AuthProvider from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserLayout from "./components/UserLayout";
@@ -65,6 +66,7 @@ function App() {
         <Route element={<ProtectedRoute adminOnly><UserLayout /></ProtectedRoute>}>
           <Route path="/admin/causes" element={<AdminCauses />} />
           <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/payouts" element={<AdminPayouts />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

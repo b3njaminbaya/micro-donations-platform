@@ -13,6 +13,7 @@ Recipients create a cause with a funding goal, category, and country. Donors bro
 - Comments on cause pages
 - Reward points earned per donation, redeemable for admin-managed rewards
 - Downloadable PDF receipts for completed donations
+- Payouts: a cause creator withdraws their raised-but-unpaid balance to M-Pesa via B2C; admins can see every payout across the platform
 - Admin moderation: edit or remove any cause, manage the rewards catalog
 - Admin user management: promote or demote other users to admin
 - JWT-based authentication
@@ -109,6 +110,21 @@ Once promoted, that admin can promote or demote anyone else from Manage Users in
 `Procfile` runs migrations and starts gunicorn from the repo root. Recurring donations are charged by a separate script, not the web process — schedule `python -m server.jobs.run_recurring_donations` to run daily via a platform cron job (e.g. a Render Cron Job), with the same environment variables as the web service.
 
 See `.env.example` for the full list of required and optional environment variables, including the M-Pesa Daraja sandbox credentials and the callback secret used to verify M-Pesa's webhook.
+
+### Payouts (M-Pesa B2C)
+
+A cause creator can withdraw their cause's raised-but-not-yet-paid-out balance to their phone via `POST /api/causes/<id>/payouts`. This uses M-Pesa's B2C (business-to-customer) API, which is configured separately from the STK-push settings above:
+
+- `MPESA_B2C_INITIATOR_NAME` — the Daraja API operator username for your shortcode.
+- `MPESA_B2C_SECURITY_CREDENTIAL` — that operator's password, encrypted with Safaricom's public certificate as described in Daraja's B2C onboarding docs. Generate this once, offline — never put the plaintext password here.
+- `MPESA_B2C_RESULT_URL` / `MPESA_B2C_TIMEOUT_URL` — callback URLs registered with Daraja for the B2C result, handled at `POST /api/mpesa/b2c/callback`.
+- `MPESA_B2C_CALLBACK_SECRET` — same shared-secret pattern as `MPESA_CALLBACK_SECRET`, appended as `?token=...` to both URLs above.
+
+Without these set, a payout request fails cleanly with a 502 rather than a crash — the same behavior `MPESA_CONSUMER_KEY` etc. have for STK push.
+
+### Recording a donation directly (no M-Pesa)
+
+`POST /api/donations` records a donation as immediately completed with no payment step, for an admin to log something that happened outside M-Pesa (cash, bank transfer). It's admin-only — regular users must go through `/mpesa/stk-push`, so nobody can mint themselves reward points or inflate a cause's progress for free. Pass `user_id` in the body to attribute the donation to a specific donor; it defaults to the admin making the request.
 
 ## License
 

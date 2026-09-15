@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Plus, List, DollarSign, User, LogOut, Gift, ArrowLeft, Menu, X, ShieldCheck, Users } from "lucide-react";
+import { LayoutDashboard, Plus, List, DollarSign, User, LogOut, Gift, ArrowLeft, Menu, X, ShieldCheck, Users, Wallet } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
 import logo from "../assets/micro-logo.jpg";
 
@@ -16,6 +16,7 @@ const NAV_LINKS = [
 const ADMIN_LINKS = [
     { path: "/admin/causes", icon: ShieldCheck, label: "Moderate Causes" },
     { path: "/admin/users", icon: Users, label: "Manage Users" },
+    { path: "/admin/payouts", icon: Wallet, label: "Payouts" },
 ];
 
 const Sidebar = () => {

@@ -14,6 +14,11 @@ os.environ["MPESA_SHORTCODE"] = ""
 os.environ["MPESA_PASSKEY"] = ""
 os.environ["MPESA_CALLBACK_URL"] = ""
 os.environ["MPESA_CALLBACK_SECRET"] = ""
+os.environ["MPESA_B2C_INITIATOR_NAME"] = ""
+os.environ["MPESA_B2C_SECURITY_CREDENTIAL"] = ""
+os.environ["MPESA_B2C_RESULT_URL"] = ""
+os.environ["MPESA_B2C_TIMEOUT_URL"] = ""
+os.environ["MPESA_B2C_CALLBACK_SECRET"] = ""
 
 from server.app import create_app  # noqa: E402
 from server.models import db as _db  # noqa: E402

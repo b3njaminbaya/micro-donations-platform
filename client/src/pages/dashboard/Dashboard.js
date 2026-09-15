@@ -107,7 +107,7 @@ const Dashboard = () => {
               {causes.slice(0, 5).map((cause) => (
                 <li key={cause.id} className="py-3 flex justify-between items-center">
                   <span className="text-ink-700">{cause.title}</span>
-                  <Link to={`/edit-cause/${cause.id}`} className="flex items-center gap-1 text-sm font-semibold text-brand-600 hover:text-brand-700">
+                  <Link to={`/causes/${cause.id}`} className="flex items-center gap-1 text-sm font-semibold text-brand-600 hover:text-brand-700">
                     <Eye size={15} /> View
                   </Link>
                 </li>

@@ -56,9 +56,15 @@ def test_points_accrue_from_completed_donations_and_redemption_spends_them(
     headers, _ = auth_headers
     cause = create_cause(client, headers)
 
-    donor_headers, _ = make_user(email="donor@example.com")
-    # 10 points per dollar donated (see models.POINTS_PER_DOLLAR).
-    client.post("/api/donations", json={"cause_id": cause["id"], "amount": 50}, headers=donor_headers)
+    donor_headers, donor = make_user(email="donor@example.com")
+    # 10 points per dollar donated (see models.POINTS_PER_DOLLAR). Recorded by
+    # an admin, since donations are only ever created directly (no M-Pesa
+    # round trip) via an admin logging an offline payment.
+    client.post(
+        "/api/donations",
+        json={"cause_id": cause["id"], "amount": 50, "user_id": donor["id"]},
+        headers=admin_headers,
+    )
 
     reward = client.post(
         "/api/rewards",

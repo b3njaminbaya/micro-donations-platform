@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
@@ -14,6 +14,7 @@ from server.routes.comment_routes import comment_bp
 from server.routes.reward_routes import reward_bp
 from server.routes.recurring_donation_routes import recurring_bp
 from server.routes.admin_user_routes import admin_user_bp
+from server.routes.payout_routes import payout_bp
 
 
 def create_app():
@@ -33,6 +34,10 @@ def create_app():
         app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(instance_path, 'micro_donations.db')}"
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Caps request bodies, including uploaded files, at 5 MB so a client
+    # can't exhaust disk/memory via /api/upload. Flask returns a 413 on its
+    # own once this is set; the handler below just makes that JSON.
+    app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
     secret_key = os.getenv("SECRET_KEY")
     if not secret_key:
@@ -63,9 +68,14 @@ def create_app():
     app.register_blueprint(reward_bp, url_prefix='/api')
     app.register_blueprint(recurring_bp, url_prefix='/api')
     app.register_blueprint(admin_user_bp, url_prefix='/api')
+    app.register_blueprint(payout_bp, url_prefix='/api')
 
     @app.route('/')
     def home():
         return {"message": "Welcome to the Micro-Donations API!"}
+
+    @app.errorhandler(413)
+    def file_too_large(e):
+        return jsonify({'error': 'File is too large. Maximum upload size is 5MB.'}), 413
 
     return app

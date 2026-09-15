@@ -15,38 +15,80 @@ def test_donate_requires_auth(client):
     assert resp.status_code == 401
 
 
-def test_donate_rejects_missing_cause(client, auth_headers):
+def test_donate_requires_admin(client, auth_headers):
+    """A regular user must not be able to mint themselves a free 'completed' donation."""
     headers, _ = auth_headers
-    resp = client.post("/api/donations", json={"cause_id": 999, "amount": 10}, headers=headers)
+    cause = create_cause(client, headers)
+    resp = client.post("/api/donations", json={"cause_id": cause["id"], "amount": 25}, headers=headers)
+    assert resp.status_code == 403
+
+    updated_cause = client.get(f"/api/causes/{cause['id']}").get_json()
+    assert updated_cause["raised_amount"] == 0
+
+
+def test_donate_rejects_missing_cause(client, admin_headers):
+    resp = client.post("/api/donations", json={"cause_id": 999, "amount": 10}, headers=admin_headers)
     assert resp.status_code == 404
 
 
-def test_donate_rejects_non_positive_amount(client, auth_headers):
+def test_donate_rejects_non_positive_amount(client, auth_headers, admin_headers):
     headers, _ = auth_headers
     cause = create_cause(client, headers)
-    resp = client.post("/api/donations", json={"cause_id": cause["id"], "amount": -5}, headers=headers)
+    resp = client.post("/api/donations", json={"cause_id": cause["id"], "amount": -5}, headers=admin_headers)
     assert resp.status_code == 400
 
 
-def test_donation_updates_cause_raised_amount(client, auth_headers, make_user):
+def test_donate_rejects_unknown_donor(client, auth_headers, admin_headers):
     headers, _ = auth_headers
     cause = create_cause(client, headers)
+    resp = client.post(
+        "/api/donations", json={"cause_id": cause["id"], "amount": 25, "user_id": 999999}, headers=admin_headers,
+    )
+    assert resp.status_code == 400
 
-    donor_headers, _ = make_user(email="donor@example.com")
-    resp = client.post("/api/donations", json={"cause_id": cause["id"], "amount": 25}, headers=donor_headers)
+
+def test_admin_can_record_donation_updates_cause_raised_amount(client, auth_headers, admin_headers, make_user):
+    headers, _ = auth_headers
+    cause = create_cause(client, headers)
+    donor_headers, donor = make_user(email="donor@example.com")
+
+    resp = client.post(
+        "/api/donations",
+        json={"cause_id": cause["id"], "amount": 25, "user_id": donor["id"]},
+        headers=admin_headers,
+    )
     assert resp.status_code == 201
     assert resp.get_json()["donation"]["status"] == "completed"
+    assert resp.get_json()["donation"]["user_id"] == donor["id"]
 
     updated_cause = client.get(f"/api/causes/{cause['id']}").get_json()
     assert updated_cause["raised_amount"] == 25
 
+    mine = client.get("/api/donations/mine", headers=donor_headers).get_json()
+    assert len(mine) == 1
 
-def test_my_donations_only_returns_own_donations(client, auth_headers, make_user):
+
+def test_admin_recorded_donation_defaults_to_admin_as_donor(client, auth_headers, admin_headers):
     headers, _ = auth_headers
     cause = create_cause(client, headers)
 
-    donor_headers, _ = make_user(email="donor@example.com")
-    client.post("/api/donations", json={"cause_id": cause["id"], "amount": 25}, headers=donor_headers)
+    resp = client.post("/api/donations", json={"cause_id": cause["id"], "amount": 25}, headers=admin_headers)
+    assert resp.status_code == 201
+
+    mine = client.get("/api/donations/mine", headers=admin_headers).get_json()
+    assert len(mine) == 1
+
+
+def test_my_donations_only_returns_own_donations(client, auth_headers, admin_headers, make_user):
+    headers, _ = auth_headers
+    cause = create_cause(client, headers)
+
+    donor_headers, donor = make_user(email="donor@example.com")
+    client.post(
+        "/api/donations",
+        json={"cause_id": cause["id"], "amount": 25, "user_id": donor["id"]},
+        headers=admin_headers,
+    )
 
     mine = client.get("/api/donations/mine", headers=donor_headers).get_json()
     assert len(mine) == 1

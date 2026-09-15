@@ -30,6 +30,35 @@ def test_login_rejects_wrong_password(client):
     assert resp.status_code == 401
 
 
+def test_register_rejects_invalid_email_format(client):
+    resp = client.post("/api/register", json={
+        "name": "Bad Email", "email": "not-an-email", "password": "password123",
+    })
+    assert resp.status_code == 400
+
+
+def test_register_rejects_short_password(client):
+    resp = client.post("/api/register", json={
+        "name": "Short Pass", "email": "shortpass@example.com", "password": "abc",
+    })
+    assert resp.status_code == 400
+
+
+def test_register_rejects_short_name(client):
+    resp = client.post("/api/register", json={
+        "name": "A", "email": "shortname@example.com", "password": "password123",
+    })
+    assert resp.status_code == 400
+
+
+def test_login_is_case_insensitive_on_email(client):
+    client.post("/api/register", json={
+        "name": "Case Test", "email": "CaseTest@Example.com", "password": "password123",
+    })
+    resp = client.post("/api/login", json={"email": "casetest@example.com", "password": "password123"})
+    assert resp.status_code == 200
+
+
 def test_register_ignores_client_supplied_role(client):
     """A client should never be able to self-assign admin at signup."""
     resp = client.post("/api/register", json={

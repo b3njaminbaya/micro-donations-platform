@@ -1,11 +1,6 @@
 import api from "./api";
 
 const DonationService = {
-  makeDonation: async (donationData) => {
-    const response = await api.post("/donations", donationData);
-    return response.data;
-  },
-
   getDonationsByCause: async (causeId) => {
     const response = await api.get(`/donations/cause/${causeId}`);
     return response.data;

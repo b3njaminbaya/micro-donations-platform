@@ -1,9 +1,5 @@
 -i https://pypi.org/simple
 alembic==1.14.1; python_version >= '3.8'
-aniso8601==10.0.0
-arrow==1.3.0; python_version >= '3.8'
-attrs==24.3.0; python_version >= '3.8'
-bcrypt==4.2.1; python_version >= '3.7'
 blinker==1.8.2; python_version >= '3.8'
 certifi==2024.8.30; python_version >= '3.6'
 charset-normalizer==3.4.0; python_full_version >= '3.7.0'
@@ -11,15 +7,12 @@ click==8.1.8; python_version >= '3.7'
 distlib==0.3.8
 filelock==3.16.0; python_version >= '3.8'
 flask==3.0.3; python_version >= '3.8'
-flask-bcrypt==1.0.1
 flask-cors==5.0.0
 flask-jwt-extended==4.6.0; python_version >= '3.7' and python_version < '4'
 flask-migrate==4.1.0; python_version >= '3.6'
-flask-restful==0.3.10
 flask-sqlalchemy==3.1.1; python_version >= '3.8'
 greenlet==3.1.1; python_version < '3.14' and platform_machine == 'aarch64' or (platform_machine == 'ppc64le' or (platform_machine == 'x86_64' or (platform_machine == 'amd64' or (platform_machine == 'AMD64' or (platform_machine == 'win32' or platform_machine == 'WIN32')))))
 gunicorn==23.0.0; python_version >= '3.7'
-ics==0.7.2
 idna==3.10; python_version >= '3.6'
 importlib-metadata==8.5.0; python_version >= '3.8'
 importlib-resources==6.4.5; python_version >= '3.8'
@@ -34,14 +27,9 @@ pluggy==1.5.0; python_version >= '3.8'
 psycopg2-binary==2.9.10; python_version >= '3.8'
 pyjwt==2.9.0; python_version >= '3.8'
 reportlab==4.2.5; python_version >= '3.7'
-python-dateutil==2.9.0.post0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'
-pytz==2024.2
 requests==2.32.3; python_version >= '3.8'
-six==1.17.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'
 sqlalchemy==2.0.37; python_version >= '3.7'
-tatsu==5.8.3; python_version >= '3.8'
 tomli==2.1.0; python_version >= '3.8'
-types-python-dateutil==2.9.0.20241206; python_version >= '3.8'
 typing-extensions==4.12.2; python_version >= '3.8'
 urllib3==2.2.3; python_version >= '3.8'
 virtualenv==20.26.4; python_version >= '3.7'
