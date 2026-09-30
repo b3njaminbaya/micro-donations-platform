@@ -2,6 +2,17 @@
 
 A web app for making small, mobile-money-native donations to community causes across East Africa. Donors pay via M-Pesa STK push — one-off or recurring — and can track exactly where their money goes.
 
+A personal portfolio project by [Benjamin Baya](#author) — built solo, end to end: API design, auth and authorization, a payment integration, background jobs, and a full test suite on the backend; a complete React frontend on top.
+
+## Live demo
+
+- **App:** https://micro-donations-platform.vercel.app
+- **API:** https://micro-donations-platform.onrender.com
+
+Both run on free-tier hosting, so the very first request after a quiet period can take 30–60s while the backend wakes up.
+
+The demo database is seeded with sample causes, donations, and rewards — browse them at `/causes` with no account needed. Registration, login, comments, reward redemption, and the dashboard all work against the live API. M-Pesa itself (STK-push donations, recurring donations, and payouts) isn't wired to real Daraja credentials on this deployment, so those specific actions fail with a clear error rather than actually charging anyone — everything else is fully live.
+
 ## Overview
 
 Recipients create a cause with a funding goal, category, and country. Donors browse or search for causes and give any amount, paid straight from their phone via M-Pesa. Every cause page shows real-time progress, recent donations, and a comment thread. Donors earn reward points on each donation, redeemable from an admin-managed catalog, and can download a PDF receipt for any completed donation.
@@ -107,7 +118,7 @@ Once promoted, that admin can promote or demote anyone else from Manage Users in
 
 ## Deployment
 
-`Procfile` runs migrations and starts gunicorn from the repo root. Recurring donations are charged by a separate script, not the web process — schedule `python -m server.jobs.run_recurring_donations` to run daily via a platform cron job (e.g. a Render Cron Job), with the same environment variables as the web service.
+The live demo above runs the backend on Render (free web service + free Postgres) and the frontend on Vercel, deployed straight from this repo's `main` branch. `Procfile` runs migrations and starts gunicorn from the repo root. Recurring donations are charged by a separate script, not the web process — schedule `python -m server.jobs.run_recurring_donations` to run daily via a platform cron job (e.g. a Render Cron Job), with the same environment variables as the web service.
 
 See `.env.example` for the full list of required and optional environment variables, including the M-Pesa Daraja sandbox credentials and the callback secret used to verify M-Pesa's webhook.
 
@@ -132,5 +143,5 @@ MIT — see [LICENSE](LICENSE).
 
 ## Author
 
-**Benjamin Mweri Baya**
-b3njaminbaya@gmail.com
+**Benjamin Baya**
+b3njaminbaya@gmail.com · [benjamin-baya.vercel.app](https://benjamin-baya.vercel.app)
