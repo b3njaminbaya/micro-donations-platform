@@ -8,7 +8,7 @@ export const TOKEN_KEY = 'mdp_token';
 // a clearly-broken localhost call instead of silently hitting production.
 const API_BASE_URL = process.env.REACT_APP_API_URL || (
   process.env.NODE_ENV === 'production'
-    ? 'https://micro-donation-platform.onrender.com/api'
+    ? 'https://micro-donations-platform.onrender.com/api'
     : 'http://localhost:5050/api'
 );
 

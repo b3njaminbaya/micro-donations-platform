@@ -1,5 +1,5 @@
 import re
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from server.models import db, User
 from datetime import timedelta
@@ -47,6 +47,9 @@ def register():
         return jsonify({"success": True, "message": "User registered successfully"})
     except Exception as e:
         db.session.rollback()
+        # Logged, not swallowed — a bare 500 with nothing in the logs is
+        # very hard to diagnose against a deployed database.
+        current_app.logger.exception("Registration failed: %s", e)
         return jsonify({"success": False, "message": "Server error"}), 500
 
 

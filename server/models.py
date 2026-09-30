@@ -13,7 +13,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    # 255, not 128: werkzeug's default hash method (scrypt) produces a
+    # ~162-character string. SQLite never enforces VARCHAR length so this
+    # was invisible in dev/tests; Postgres does enforce it and raises on
+    # insert, which is a hard 500 on every registration.
+    password_hash = db.Column(db.String(255), nullable=False)
     # 'user': can create causes and donate. 'admin': can moderate any cause/donation.
     # Never settable from a public request body — see auth_routes.register().
     role = db.Column(db.String(20), nullable=False, default='user')
